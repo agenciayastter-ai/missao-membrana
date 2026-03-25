@@ -1,13 +1,345 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="pt-BR">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Missão Membrana</title>
-    <meta name="description" content="Jogo educativo sobre a bomba de sódio e potássio." />
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Missão Membrana</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: #07111f;
+      color: #fff;
+    }
+    .wrap {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+    .hero {
+      background: linear-gradient(135deg, #0f3b6d, #0a7cc7);
+      border-radius: 20px;
+      padding: 28px;
+      box-shadow: 0 10px 30px rgba(0,0,0,.25);
+      margin-bottom: 20px;
+    }
+    h1, h2, h3, p { margin-top: 0; }
+    .grid {
+      display: grid;
+      gap: 16px;
+    }
+    .stats { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); margin-bottom: 20px; }
+    .card {
+      background: #0d1728;
+      border: 1px solid #1e2a40;
+      border-radius: 18px;
+      padding: 18px;
+    }
+    .main { grid-template-columns: 1.2fr .8fr; }
+    @media (max-width: 900px) {
+      .main { grid-template-columns: 1fr; }
+    }
+    .buttons {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px,1fr));
+      gap: 12px;
+      margin-top: 18px;
+    }
+    button {
+      border: 0;
+      border-radius: 16px;
+      padding: 14px 16px;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: bold;
+    }
+    .btn-na { background: #d63e59; color: #fff; }
+    .btn-k { background: #19a46b; color: #fff; }
+    .btn-atp { background: #ffbf3b; color: #18202c; }
+    .btn-check, .btn-restart, .btn-next {
+      background: #167fd6; color: #fff; margin-top: 12px;
+    }
+    .btn-restart { background: #374151; }
+    .progress {
+      background: #182234;
+      border-radius: 999px;
+      height: 16px;
+      overflow: hidden;
+      margin-top: 8px;
+    }
+    .bar { height: 100%; }
+    .bar-na { background: #d63e59; }
+    .bar-k { background: #19a46b; }
+    .status {
+      background: #10233c;
+      border: 1px solid #24486f;
+      border-radius: 16px;
+      padding: 14px;
+      margin-top: 16px;
+      line-height: 1.5;
+    }
+    .small { color: #b7c6d8; font-size: 14px; }
+    .quiz-option {
+      display: block;
+      width: 100%;
+      text-align: left;
+      background: #101a2a;
+      color: #fff;
+      border: 1px solid #2a374d;
+      margin-top: 10px;
+    }
+    .correct { border: 1px solid #16a34a !important; background: rgba(22,163,74,.15) !important; }
+    .wrong { border: 1px solid #dc2626 !important; background: rgba(220,38,38,.15) !important; }
+    .tag {
+      display: inline-block;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.12);
+      font-size: 13px;
+    }
+    ul { padding-left: 18px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="hero">
+      <div class="tag">Jogo educativo de Biologia</div>
+      <h1>Missão Membrana</h1>
+      <p style="font-size:18px;">Transporte sob ataque à bomba de sódio e potássio</p>
+      <p class="small">Defenda a célula, expulse o sódio, traga o potássio de volta e use ATP para restaurar o equilíbrio da membrana plasmática.</p>
+    </section>
+
+    <section class="grid stats">
+      <div class="card"><div class="small">Fase atual</div><h2 id="faseNumero">1</h2><div id="faseTitulo" class="small"></div></div>
+      <div class="card"><div class="small">Sódio removido</div><h2 id="naStat">0/3</h2><div class="small">Expulsão de Na⁺</div></div>
+      <div class="card"><div class="small">Potássio inserido</div><h2 id="kStat">0/2</h2><div class="small">Reposição de K⁺</div></div>
+      <div class="card"><div class="small">ATP gasto</div><h2 id="atpStat">0/1</h2><div class="small">Energia da bomba</div></div>
+    </section>
+
+    <section class="grid main">
+      <div class="card">
+        <h2>Centro de Controle</h2>
+        <p id="objetivo"></p>
+
+        <div class="buttons">
+          <button class="btn-na" onclick="expulsarSodio()">Expulsar Na⁺</button>
+          <button class="btn-k" onclick="inserirPotassio()">Inserir K⁺</button>
+          <button class="btn-atp" onclick="usarATP()">Usar ATP</button>
+        </div>
+
+        <div style="margin-top:18px;">
+          <div class="small">Progresso do sódio <span id="naPct"></span></div>
+          <div class="progress"><div id="naBar" class="bar bar-na" style="width:0%"></div></div>
+        </div>
+
+        <div style="margin-top:14px;">
+          <div class="small">Progresso do potássio <span id="kPct"></span></div>
+          <div class="progress"><div id="kBar" class="bar bar-k" style="width:0%"></div></div>
+        </div>
+
+        <div class="status" id="mensagem"></div>
+
+        <button class="btn-check" onclick="verificarFase()">Verificar missão</button>
+        <button class="btn-restart" onclick="reiniciarJogo()">Reiniciar jogo</button>
+      </div>
+
+      <div class="grid">
+        <div class="card">
+          <h2>Resumo científico</h2>
+          <p>A bomba de sódio e potássio é uma proteína da membrana plasmática que realiza <b>transporte ativo</b>.</p>
+          <p>Em cada ciclo, ela <b>expulsa 3 Na⁺</b> e <b>traz 2 K⁺</b> para dentro da célula, com gasto de <b>1 ATP</b>.</p>
+          <p>Esse processo ajuda no impulso nervoso, na contração muscular e no equilíbrio celular.</p>
+        </div>
+
+        <div class="card">
+          <h2>Painel de estudo</h2>
+          <ul>
+            <li>Transporte ativo gasta energia.</li>
+            <li>O ATP ativa a bomba.</li>
+            <li>O gradiente iônico é essencial para a célula.</li>
+            <li>Sem essa bomba, a membrana perde equilíbrio.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="card" style="margin-top:20px;">
+      <h2>Quiz final</h2>
+      <div id="quizBox"></div>
+    </section>
+  </div>
+
+  <script>
+    const fases = [
+      { id: 1, titulo: "Invasão de Sódio", objetivo: "Remover 3 íons de sódio da célula.", sodio: 3, potassio: 0, energia: 1 },
+      { id: 2, titulo: "Reposição de Potássio", objetivo: "Trazer 2 íons de potássio para dentro da célula.", sodio: 0, potassio: 2, energia: 1 },
+      { id: 3, titulo: "Defesa da Membrana", objetivo: "Concluir o ciclo completo da bomba de sódio e potássio.", sodio: 3, potassio: 2, energia: 1 }
+    ];
+
+    const quiz = [
+      { pergunta: "Quantos íons de sódio a bomba remove por ciclo?", opcoes: ["1", "2", "3", "4"], correta: "3" },
+      { pergunta: "Quantos íons de potássio entram na célula por ciclo?", opcoes: ["1", "2", "3", "4"], correta: "2" },
+      { pergunta: "Que tipo de transporte a bomba realiza?", opcoes: ["Passivo", "Ativo", "Osmose", "Difusão simples"], correta: "Ativo" }
+    ];
+
+    let faseAtual = 0;
+    let sodioRemovido = 0;
+    let potassioInserido = 0;
+    let energiaGasta = 0;
+    let jogoConcluido = false;
+    let mensagem = "A célula está sob ataque. Use a bomba para restaurar o equilíbrio.";
+    let quizIndex = 0;
+    let pontuacao = 0;
+    let respondido = false;
+    let respostaSelecionada = "";
+
+    function fase() {
+      return fases[faseAtual];
+    }
+
+    function atualizarTela() {
+      const f = fase();
+      document.getElementById("faseNumero").textContent = f.id;
+      document.getElementById("faseTitulo").textContent = f.titulo;
+      document.getElementById("objetivo").textContent = f.objetivo;
+      document.getElementById("naStat").textContent = `${sodioRemovido}/${f.sodio}`;
+      document.getElementById("kStat").textContent = `${potassioInserido}/${f.potassio}`;
+      document.getElementById("atpStat").textContent = `${energiaGasta}/${f.energia}`;
+      document.getElementById("mensagem").textContent = mensagem;
+
+      const naPct = f.sodio === 0 ? 100 : Math.min((sodioRemovido / f.sodio) * 100, 100);
+      const kPct = f.potassio === 0 ? 100 : Math.min((potassioInserido / f.potassio) * 100, 100);
+
+      document.getElementById("naBar").style.width = naPct + "%";
+      document.getElementById("kBar").style.width = kPct + "%";
+      document.getElementById("naPct").textContent = Math.round(naPct) + "%";
+      document.getElementById("kPct").textContent = Math.round(kPct) + "%";
+
+      renderQuiz();
+    }
+
+    function expulsarSodio() {
+      if (jogoConcluido) return;
+      const f = fase();
+      if (sodioRemovido >= f.sodio) {
+        mensagem = "O sódio desta fase já foi removido.";
+      } else {
+        sodioRemovido++;
+        mensagem = "Na⁺ expulso com sucesso para fora da célula.";
+      }
+      atualizarTela();
+    }
+
+    function inserirPotassio() {
+      if (jogoConcluido) return;
+      const f = fase();
+      if (f.sodio > 0 && sodioRemovido < f.sodio) {
+        mensagem = "Primeiro remova o sódio necessário para ativar a próxima etapa.";
+      } else if (potassioInserido >= f.potassio) {
+        mensagem = "O potássio desta fase já foi inserido.";
+      } else {
+        potassioInserido++;
+        mensagem = "K⁺ inserido com sucesso para dentro da célula.";
+      }
+      atualizarTela();
+    }
+
+    function usarATP() {
+      if (jogoConcluido) return;
+      energiaGasta++;
+      mensagem = "ATP utilizado. A bomba recebeu energia para funcionar.";
+      atualizarTela();
+    }
+
+    function verificarFase() {
+      const f = fase();
+      const sodioOk = sodioRemovido >= f.sodio;
+      const potassioOk = potassioInserido >= f.potassio;
+      const energiaOk = energiaGasta >= f.energia;
+
+      if (sodioOk && potassioOk && energiaOk) {
+        if (faseAtual < fases.length - 1) {
+          mensagem = "Fase concluída. Prepare-se para a próxima missão.";
+          faseAtual++;
+          sodioRemovido = 0;
+          potassioInserido = 0;
+          energiaGasta = 0;
+        } else {
+          jogoConcluido = true;
+          mensagem = "Missão concluída. A membrana foi protegida e o equilíbrio celular foi restaurado.";
+        }
+      } else {
+        mensagem = "Ainda faltam etapas. Use ATP e complete o transporte de sódio e potássio.";
+      }
+      atualizarTela();
+    }
+
+    function reiniciarJogo() {
+      faseAtual = 0;
+      sodioRemovido = 0;
+      potassioInserido = 0;
+      energiaGasta = 0;
+      jogoConcluido = false;
+      mensagem = "A célula está sob ataque. Use a bomba para restaurar o equilíbrio.";
+      quizIndex = 0;
+      pontuacao = 0;
+      respondido = false;
+      respostaSelecionada = "";
+      atualizarTela();
+    }
+
+    function responder(opcao) {
+      if (respondido) return;
+      respondido = true;
+      respostaSelecionada = opcao;
+      if (opcao === quiz[quizIndex].correta) pontuacao++;
+      renderQuiz();
+    }
+
+    function proximaQuestao() {
+      if (quizIndex < quiz.length - 1) {
+        quizIndex++;
+        respondido = false;
+        respostaSelecionada = "";
+        renderQuiz();
+      } else {
+        renderResultadoQuiz();
+      }
+    }
+
+    function renderQuiz() {
+      if (quizIndex >= quiz.length) return renderResultadoQuiz();
+      const q = quiz[quizIndex];
+      const box = document.getElementById("quizBox");
+      let html = `<div class="small">Pergunta ${quizIndex + 1} de ${quiz.length}</div>`;
+      html += `<h3>${q.pergunta}</h3>`;
+      q.opcoes.forEach(opcao => {
+        let cls = "quiz-option";
+        if (respondido && opcao === q.correta) cls += " correct";
+        if (respondido && opcao === respostaSelecionada && opcao !== q.correta) cls += " wrong";
+        html += `<button class="${cls}" onclick="responder('${opcao}')">${opcao}</button>`;
+      });
+      if (respondido) {
+        html += `<p class="small" style="margin-top:12px;">Resposta correta: <b>${q.correta}</b></p>`;
+        html += `<button class="btn-next" onclick="proximaQuestao()">${quizIndex < quiz.length - 1 ? "Próxima pergunta" : "Ver resultado"}</button>`;
+      }
+      box.innerHTML = html;
+    }
+
+    function renderResultadoQuiz() {
+      document.getElementById("quizBox").innerHTML = `
+        <div class="status">
+          <div class="small">Pontuação final</div>
+          <h2>${pontuacao}/${quiz.length}</h2>
+          <p>${pontuacao === quiz.length ? "Excelente. Você dominou a missão." : pontuacao >= 2 ? "Muito bom. Você compreendeu bem o conteúdo." : "Revise o painel de estudo e tente novamente."}</p>
+          <button class="btn-restart" onclick="reiniciarJogo()">Refazer quiz</button>
+        </div>
+      `;
+      quizIndex = quiz.length;
+    }
+
+    atualizarTela();
+  </script>
+</body>
 </html>
